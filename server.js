@@ -7,21 +7,21 @@ const MOVIEDEX = require('./moviedex.json')
 
 const app = express()
 
-app.use(morgan('dev'))
+const morganSetting = process.env.NODE_ENV === 'production' ? 'tiny' : 'common'
+app.use(morgan(morganSetting))
 app.use(helmet())
 app.use(cors())
 
-console.log('server running')
-
 // function for validating bearer token
 app.use(function validateBearerToken(req, res, next) {
-    const apiToken = process.env.API_TOKEN
-    const authToken = req.get('Authorization')
-
-    if (!authToken || apiToken !== authToken.split(' ')[1]) {
-      return res.status(401).json({ error: 'Hello! Unauthorized request' })
-    }
-    next()
+        const apiToken = process.env.API_TOKEN
+        const authToken = req.get('Authorization')
+        
+        if (!authToken || authToken.split(' ')[1] !== apiToken) {
+          return res.status(401).json({ error: 'Hello! Unauthorized request' })
+        }
+        // move to the next middleware
+        next()
 })
 
 function handleMovieSearch(req, res) {
@@ -45,16 +45,25 @@ function handleMovieSearch(req, res) {
             Number(movie.avg_vote) >= Number(avg_vote)
         )
     }
-
     res.json(response)
 }
 
 app.get('/movie', handleMovieSearch)
 
-PORT = 7000;
+app.use((error, req, res, next) => {
+    let response
+    if (process.env.NODE_ENV === 'production') {
+      response = { error: { message: 'server error' }}
+    } else {
+      response = { error }
+    }
+    res.status(500).json(response)
+})
+
+const PORT = process.env.PORT || 7000
 
 app.listen(PORT, () => {
-    console.log(`Express server is listening on port ${PORT}!`)
+    console.log('Express server is listening')
 })
 
 
